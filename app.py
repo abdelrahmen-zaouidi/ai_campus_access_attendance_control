@@ -8,7 +8,6 @@ from dotenv import load_dotenv
 from flask import Flask, current_app, flash, redirect, render_template, request, url_for
 from flask_login import (
     LoginManager,
-    UserMixin,
     current_user,
     login_required,
     login_user,
@@ -18,14 +17,14 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from PIL import Image, UnidentifiedImageError
 from sqlalchemy.exc import IntegrityError
-from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import CSRFProtect
 from flask_wtf.csrf import CSRFError
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 
+from models import AccessLog, Admin, Course, db
 
-db = SQLAlchemy()
+
 login_manager = LoginManager()
 login_manager.login_view = "login"
 csrf = CSRFProtect()
@@ -76,30 +75,6 @@ def _resolve_runtime_path(path_value: str, app_instance_path: str) -> str:
     if not path.is_absolute():
         path = Path(app_instance_path).parent / path
     return str(path.resolve())
-
-
-class Admin(db.Model, UserMixin):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(100), unique=True, nullable=False)
-    password = db.Column(db.String(200), nullable=False)
-
-
-class AccessLog(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(200))
-    timestamp = db.Column(db.String(100))
-    status = db.Column(db.String(50))
-
-
-class Course(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    first_name = db.Column(db.String(100), nullable=False)
-    last_name = db.Column(db.String(100), nullable=False)
-    face_id = db.Column(db.String(200), unique=True, nullable=False)
-    room_name = db.Column(db.String(100), nullable=False)
-    course_date = db.Column(db.String(100), nullable=False)
-    start_time = db.Column(db.String(100), nullable=False)
-    end_time = db.Column(db.String(100), nullable=False)
 
 
 @login_manager.user_loader
