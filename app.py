@@ -12,7 +12,11 @@ from flask_login import (
     login_user,
     logout_user,
 )
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from flask_sqlalchemy import SQLAlchemy
+from flask_wtf import CSRFProtect
+from flask_wtf.csrf import CSRFError
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 
@@ -20,6 +24,8 @@ from werkzeug.utils import secure_filename
 db = SQLAlchemy()
 login_manager = LoginManager()
 login_manager.login_view = "login"
+csrf = CSRFProtect()
+limiter = Limiter(key_func=get_remote_address)
 
 
 def _env_bool(name: str, default: bool) -> bool:
@@ -104,13 +110,21 @@ def create_app():
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SECURE=_env_bool("SESSION_COOKIE_SECURE", True),
         SESSION_COOKIE_SAMESITE=os.environ.get("SESSION_COOKIE_SAMESITE", "Lax"),
+        WTF_CSRF_TIME_LIMIT=_env_int("WTF_CSRF_TIME_LIMIT", 3600),
+        RATELIMIT_STORAGE_URI=os.environ.get("RATELIMIT_STORAGE_URI", "memory://"),
+        LOGIN_RATE_LIMIT=os.environ.get("LOGIN_RATE_LIMIT", "5 per minute"),
+        UPLOAD_RATE_LIMIT=os.environ.get("UPLOAD_RATE_LIMIT", "20 per hour"),
     )
 
     Path(app.config["UPLOAD_FOLDER"]).mkdir(parents=True, exist_ok=True)
 
     db.init_app(app)
     login_manager.init_app(app)
+    csrf.init_app(app)
+    limiter.init_app(app)
     register_routes(app)
+    register_error_handlers(app)
+    register_security_headers(app)
 
     with app.app_context():
         initialize_database()
@@ -150,6 +164,7 @@ def bootstrap_admin_from_env():
 
 def register_routes(app: Flask) -> None:
     @app.route("/", methods=["GET", "POST"])
+    @limiter.limit(app.config["LOGIN_RATE_LIMIT"])
     def login():
         if current_user.is_authenticated:
             return redirect(url_for("view_courses"))
@@ -173,6 +188,7 @@ def register_routes(app: Flask) -> None:
         return redirect(url_for("login"))
 
     @app.route("/add_teacher_course", methods=["GET", "POST"])
+    @limiter.limit(app.config["UPLOAD_RATE_LIMIT"])
     @login_required
     def add_teacher_course():
         if request.method == "POST":
@@ -221,6 +237,7 @@ def register_routes(app: Flask) -> None:
         return render_template("view_courses.html", courses=courses)
 
     @app.route("/upload_csv", methods=["GET", "POST"])
+    @limiter.limit(app.config["UPLOAD_RATE_LIMIT"])
     @login_required
     def upload_csv():
         if request.method == "POST":
@@ -297,6 +314,43 @@ def register_routes(app: Flask) -> None:
             return redirect(url_for("view_courses"))
 
         return render_template("edit_course.html", course=course)
+
+
+def register_error_handlers(app: Flask) -> None:
+    @app.errorhandler(CSRFError)
+    def handle_csrf_error(error):
+        current_app.logger.warning("CSRF validation failed: %s", error.description)
+        flash("Security token expired. Please try again.", "danger")
+        return redirect(request.referrer or url_for("login")), 400
+
+
+def register_security_headers(app: Flask) -> None:
+    @app.after_request
+    def set_security_headers(response):
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        response.headers.setdefault(
+            "Permissions-Policy",
+            "camera=(), microphone=(), geolocation=(), payment=()",
+        )
+        response.headers.setdefault(
+            "Content-Security-Policy",
+            "default-src 'self'; "
+            "base-uri 'self'; "
+            "form-action 'self'; "
+            "frame-ancestors 'none'; "
+            "object-src 'none'; "
+            "img-src 'self' data:; "
+            "script-src 'self'; "
+            "style-src 'self'",
+        )
+        if current_app.config["SESSION_COOKIE_SECURE"]:
+            response.headers.setdefault(
+                "Strict-Transport-Security",
+                "max-age=31536000; includeSubDomains",
+            )
+        return response
 
 
 app = create_app()

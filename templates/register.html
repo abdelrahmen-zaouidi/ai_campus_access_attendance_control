@@ -10,6 +10,7 @@
     <div class="container">
         <h2>Créer un Compte</h2>
         <form action="/register" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <label for="username">Nom d'utilisateur:</label>
             <input type="text" id="username" name="username" required>
             <label for="password">Mot de passe:</label>

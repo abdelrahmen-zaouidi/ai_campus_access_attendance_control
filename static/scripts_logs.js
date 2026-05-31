@@ -3,6 +3,13 @@ setInterval(() => {
     window.location.reload();
 }, 60000);
 
+const refreshButton = document.querySelector("#refresh-logs");
+if (refreshButton) {
+    refreshButton.addEventListener("click", () => {
+        window.location.reload();
+    });
+}
+
 // Optional: Add sorting logic (if needed)
 document.querySelectorAll("th").forEach((header, index) => {
     header.addEventListener("click", () => {

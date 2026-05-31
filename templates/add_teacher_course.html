@@ -11,6 +11,7 @@
     <div class="container">
         <h2>Ajouter un cours</h2>
         <form action="{{ url_for('add_teacher_course') }}" method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
             <div class="form-row">
                 <div>

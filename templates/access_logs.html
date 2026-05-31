@@ -49,7 +49,7 @@
         </div>
 
         <div class="action-buttons">
-            <button class="refresh-btn" onclick="window.location.reload()">Actualiser la liste</button>
+            <button class="refresh-btn" type="button" id="refresh-logs">Actualiser la liste</button>
             <a href="{{ url_for('view_courses') }}" class="refresh-btn">Liste des cours</a>
             <a href="{{ url_for('logout') }}"class="refresh-btn">Déconnexion</a>
         </div>

@@ -99,6 +99,10 @@ td {
     text-align: center;
 }
 
+.inline-form {
+    display: inline;
+}
+
 .add-course-btn {
     display: inline-block;
     text-decoration: none;
