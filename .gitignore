@@ -3,6 +3,7 @@
 .env*
 .env.local
 .env.*.local
+!.env.example
 
 # Python
 __pycache__/
@@ -26,10 +27,15 @@ wheels/
 .installed.cfg
 *.egg
 venv/
+.venv/
 env/
 ENV/
 env.bak/
 venv.bak/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 
 # Logs
 *.log
@@ -55,8 +61,10 @@ yarn-error.log
 *.xlsx
 *.db
 *.sqlite
+*.sqlite3
 data/
 datasets/
+instance/
 uploads/
 
 # Face recognition models or sensitive data
