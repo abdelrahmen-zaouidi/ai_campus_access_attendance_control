@@ -1,5 +1,7 @@
 import csv
+import io
 import os
+from datetime import datetime
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -14,6 +16,8 @@ from flask_login import (
 )
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from PIL import Image, UnidentifiedImageError
+from sqlalchemy.exc import IntegrityError
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import CSRFProtect
 from flask_wtf.csrf import CSRFError
@@ -26,6 +30,21 @@ login_manager = LoginManager()
 login_manager.login_view = "login"
 csrf = CSRFProtect()
 limiter = Limiter(key_func=get_remote_address)
+
+ALLOWED_IMAGE_FORMATS = {
+    "JPEG": {".jpg", ".jpeg"},
+    "PNG": {".png"},
+}
+ALLOWED_IMAGE_MIMETYPES = {"image/jpeg", "image/png"}
+CSV_REQUIRED_FIELDS = {
+    "first_name",
+    "last_name",
+    "room_name",
+    "course_date",
+    "start_time",
+    "end_time",
+}
+Image.MAX_IMAGE_PIXELS = 10_000_000
 
 
 def _env_bool(name: str, default: bool) -> bool:
@@ -162,6 +181,139 @@ def bootstrap_admin_from_env():
     current_app.logger.info("Bootstrapped initial admin user from environment")
 
 
+def _clean_required_text(form_data, field_name: str, max_length: int = 100) -> str:
+    value = (form_data.get(field_name) or "").strip()
+    if not value:
+        raise ValueError(f"{field_name} is required")
+    if len(value) > max_length:
+        raise ValueError(f"{field_name} must be {max_length} characters or fewer")
+    return value
+
+
+def _validate_date(value: str) -> str:
+    try:
+        datetime.strptime(value, "%Y-%m-%d")
+    except ValueError as exc:
+        raise ValueError("course_date must use YYYY-MM-DD format") from exc
+    return value
+
+
+def _validate_time(value: str, field_name: str) -> str:
+    try:
+        datetime.strptime(value, "%H:%M")
+    except ValueError as exc:
+        raise ValueError(f"{field_name} must use HH:MM format") from exc
+    return value
+
+
+def _course_data_from_mapping(mapping) -> dict:
+    first_name = _clean_required_text(mapping, "first_name")
+    last_name = _clean_required_text(mapping, "last_name")
+    room_name = _clean_required_text(mapping, "nom_salle", max_length=100)
+    course_date = _validate_date(_clean_required_text(mapping, "date_cours", 10))
+    start_time = _validate_time(
+        _clean_required_text(mapping, "heure_debut", 5),
+        "heure_debut",
+    )
+    end_time = _validate_time(
+        _clean_required_text(mapping, "heure_fin", 5),
+        "heure_fin",
+    )
+    if start_time >= end_time:
+        raise ValueError("heure_debut must be earlier than heure_fin")
+
+    return {
+        "first_name": first_name,
+        "last_name": last_name,
+        "room_name": room_name,
+        "course_date": course_date,
+        "start_time": start_time,
+        "end_time": end_time,
+    }
+
+
+def _course_data_from_csv_row(row: dict, line_number: int) -> dict:
+    normalized_row = {
+        "first_name": row.get("first_name", ""),
+        "last_name": row.get("last_name", ""),
+        "nom_salle": row.get("room_name", ""),
+        "date_cours": row.get("course_date", ""),
+        "heure_debut": row.get("start_time", ""),
+        "heure_fin": row.get("end_time", ""),
+    }
+    try:
+        return _course_data_from_mapping(normalized_row)
+    except ValueError as exc:
+        raise ValueError(f"CSV line {line_number}: {exc}") from exc
+
+
+def _safe_upload_path(filename: str) -> Path:
+    safe_name = secure_filename(filename)
+    if not safe_name:
+        raise ValueError("Uploaded filename is invalid")
+
+    upload_root = Path(current_app.config["UPLOAD_FOLDER"]).resolve()
+    destination = (upload_root / safe_name).resolve()
+    if destination.parent != upload_root:
+        raise ValueError("Uploaded filename escapes the upload directory")
+    return destination
+
+
+def _validate_image_upload(file_storage) -> str:
+    if not file_storage or not file_storage.filename:
+        raise ValueError("A face image is required")
+
+    extension = Path(file_storage.filename).suffix.lower()
+    if extension not in {ext for exts in ALLOWED_IMAGE_FORMATS.values() for ext in exts}:
+        raise ValueError("Face image must be a JPEG or PNG file")
+
+    if file_storage.mimetype and file_storage.mimetype not in ALLOWED_IMAGE_MIMETYPES:
+        raise ValueError("Face image MIME type must be image/jpeg or image/png")
+
+    file_storage.stream.seek(0)
+    try:
+        with Image.open(file_storage.stream) as image:
+            image.verify()
+            if extension not in ALLOWED_IMAGE_FORMATS.get(image.format, set()):
+                raise ValueError("Face image extension does not match its content")
+    except UnidentifiedImageError as exc:
+        raise ValueError("Face image content is not a valid image") from exc
+    finally:
+        file_storage.stream.seek(0)
+
+    return extension
+
+
+def _save_course_image(file_storage, first_name: str, last_name: str) -> str:
+    extension = _validate_image_upload(file_storage)
+    image_name = f"{first_name}_{last_name}{extension}"
+    destination = _safe_upload_path(image_name)
+    file_storage.save(destination)
+    return str(destination)
+
+
+def _parse_course_csv(file_storage):
+    if not file_storage or not file_storage.filename:
+        raise ValueError("CSV file is required")
+    if Path(file_storage.filename).suffix.lower() != ".csv":
+        raise ValueError("Upload a valid CSV file")
+
+    file_storage.stream.seek(0)
+    text_stream = io.TextIOWrapper(file_storage.stream, encoding="utf-8-sig", newline="")
+    reader = csv.DictReader(text_stream)
+    missing_fields = CSV_REQUIRED_FIELDS - set(reader.fieldnames or [])
+    if missing_fields:
+        missing = ", ".join(sorted(missing_fields))
+        raise ValueError(f"CSV is missing required fields: {missing}")
+
+    rows = []
+    for line_number, row in enumerate(reader, start=2):
+        rows.append(_course_data_from_csv_row(row, line_number))
+    if not rows:
+        raise ValueError("CSV contains no course rows")
+    return rows
+
+
 def register_routes(app: Flask) -> None:
     @app.route("/", methods=["GET", "POST"])
     @limiter.limit(app.config["LOGIN_RATE_LIMIT"])
@@ -192,31 +344,25 @@ def register_routes(app: Flask) -> None:
     @login_required
     def add_teacher_course():
         if request.method == "POST":
-            first_name = request.form["first_name"]
-            last_name = request.form["last_name"]
-            photo = request.files["photo"]
-            room_name = request.form["nom_salle"]
-            course_date = request.form["date_cours"]
-            start_time = request.form["heure_debut"]
-            end_time = request.form["heure_fin"]
-
-            filename = secure_filename(f"{first_name}_{last_name}.jpg")
-            file_path = os.path.join(current_app.config["UPLOAD_FOLDER"], filename)
-            photo.save(file_path)
-
-            new_course = Course(
-                first_name=first_name,
-                last_name=last_name,
-                face_id=file_path,
-                room_name=room_name,
-                course_date=course_date,
-                start_time=start_time,
-                end_time=end_time,
-            )
-            db.session.add(new_course)
-            db.session.commit()
-            flash("Course added successfully!", "success")
-            return redirect(url_for("add_teacher_course"))
+            file_path = None
+            try:
+                course_data = _course_data_from_mapping(request.form)
+                file_path = _save_course_image(
+                    request.files.get("photo"),
+                    course_data["first_name"],
+                    course_data["last_name"],
+                )
+                new_course = Course(face_id=file_path, **course_data)
+                db.session.add(new_course)
+                db.session.commit()
+                flash("Course added successfully!", "success")
+                return redirect(url_for("add_teacher_course"))
+            except (IntegrityError, ValueError) as exc:
+                db.session.rollback()
+                if file_path and os.path.exists(file_path):
+                    os.remove(file_path)
+                current_app.logger.warning("Course creation failed: %s", exc)
+                flash(str(exc), "danger")
 
         return render_template("add_teacher_course.html")
 
@@ -241,34 +387,25 @@ def register_routes(app: Flask) -> None:
     @login_required
     def upload_csv():
         if request.method == "POST":
-            file = request.files.get("file")
-            if file and file.filename.endswith(".csv"):
-                filepath = os.path.join(current_app.config["UPLOAD_FOLDER"], file.filename)
-                file.save(filepath)
-                with open(filepath, "r") as csv_file:
-                    reader = csv.DictReader(csv_file)
-                    for row in reader:
-                        photo_filename = secure_filename(
-                            f"{row['first_name']}_{row['last_name']}.jpg",
-                        )
-                        photo_path = os.path.join(
-                            current_app.config["UPLOAD_FOLDER"],
-                            photo_filename,
-                        )
-                        if os.path.exists(photo_path):
-                            new_course = Course(
-                                first_name=row["first_name"],
-                                last_name=row["last_name"],
-                                room_name=row["room_name"],
-                                course_date=row["course_date"],
-                                start_time=row["start_time"],
-                                end_time=row["end_time"],
-                                face_id=photo_path,
-                            )
-                            db.session.add(new_course)
-                    db.session.commit()
+            try:
+                imported_count = 0
+                for course_data in _parse_course_csv(request.files.get("file")):
+                    photo_filename = secure_filename(
+                        f"{course_data['first_name']}_{course_data['last_name']}.jpg",
+                    )
+                    photo_path = _safe_upload_path(photo_filename)
+                    if photo_path.exists():
+                        db.session.add(Course(face_id=str(photo_path), **course_data))
+                        imported_count += 1
+                if imported_count == 0:
+                    raise ValueError("CSV rows did not match any existing face images")
+                db.session.commit()
+                flash(f"CSV imported successfully: {imported_count} course(s).", "success")
                 return redirect(url_for("view_courses"))
-            return "Invalid File Format. Upload a valid CSV.", 400
+            except (IntegrityError, ValueError) as exc:
+                db.session.rollback()
+                current_app.logger.warning("CSV import failed: %s", exc)
+                flash(str(exc), "danger")
 
         return render_template("excel.html")
 
@@ -291,27 +428,41 @@ def register_routes(app: Flask) -> None:
             return redirect(url_for("view_courses"))
 
         if request.method == "POST":
-            course.first_name = request.form["first_name"]
-            course.last_name = request.form["last_name"]
-            course.room_name = request.form["nom_salle"]
-            course.course_date = request.form["date_cours"]
-            course.start_time = request.form["heure_debut"]
-            course.end_time = request.form["heure_fin"]
+            new_file_path = None
+            old_face_path = Path(course.face_id).resolve() if course.face_id else None
+            try:
+                course_data = _course_data_from_mapping(request.form)
+                for field_name, value in course_data.items():
+                    setattr(course, field_name, value)
 
-            if "photo" in request.files:
-                photo = request.files["photo"]
-                if photo and photo.filename != "":
-                    filename = secure_filename(f"{course.first_name}_{course.last_name}.jpg")
-                    file_path = os.path.join(current_app.config["UPLOAD_FOLDER"], filename)
-
-                    if course.face_id and os.path.exists(course.face_id):
+                photo = request.files.get("photo")
+                if photo and photo.filename:
+                    new_file_path = _save_course_image(
+                        photo,
+                        course.first_name,
+                        course.last_name,
+                    )
+                    if (
+                        old_face_path
+                        and old_face_path != Path(new_file_path).resolve()
+                        and old_face_path.exists()
+                    ):
                         os.remove(course.face_id)
+                    course.face_id = new_file_path
 
-                    photo.save(file_path)
-                    course.face_id = file_path
-
-            db.session.commit()
-            return redirect(url_for("view_courses"))
+                db.session.commit()
+                flash("Course updated successfully.", "success")
+                return redirect(url_for("view_courses"))
+            except (IntegrityError, ValueError) as exc:
+                db.session.rollback()
+                if (
+                    new_file_path
+                    and Path(new_file_path).resolve() != old_face_path
+                    and os.path.exists(new_file_path)
+                ):
+                    os.remove(new_file_path)
+                current_app.logger.warning("Course update failed: %s", exc)
+                flash(str(exc), "danger")
 
         return render_template("edit_course.html", course=course)
 
