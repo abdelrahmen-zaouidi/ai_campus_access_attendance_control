@@ -120,13 +120,32 @@ def create_app():
 
 def initialize_database():
     db.create_all()
-    if not Admin.query.filter_by(username="admin").first():
-        hashed_password = generate_password_hash(
-            "admin_password",
-            method="pbkdf2:sha256",
+    bootstrap_admin_from_env()
+
+
+def bootstrap_admin_from_env():
+    if Admin.query.count() > 0:
+        return
+
+    username = os.environ.get("ADMIN_USERNAME")
+    password = os.environ.get("ADMIN_PASSWORD")
+    if not username and not password:
+        current_app.logger.warning(
+            "No admin account exists. Set ADMIN_USERNAME and ADMIN_PASSWORD "
+            "once to bootstrap the first administrator.",
         )
-        db.session.add(Admin(username="admin", password=hashed_password))
-        db.session.commit()
+        return
+    if not username or not password:
+        raise RuntimeError(
+            "ADMIN_USERNAME and ADMIN_PASSWORD must be provided together",
+        )
+    if len(password) < 12:
+        raise RuntimeError("ADMIN_PASSWORD must be at least 12 characters long")
+
+    hashed_password = generate_password_hash(password, method="pbkdf2:sha256")
+    db.session.add(Admin(username=username, password=hashed_password))
+    db.session.commit()
+    current_app.logger.info("Bootstrapped initial admin user from environment")
 
 
 def register_routes(app: Flask) -> None:
