@@ -1,0 +1,21 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: sqlite:////app/instance/teachers.db
+      UPLOAD_FOLDER: /app/uploads
+      SESSION_COOKIE_SECURE: "false"
+    ports:
+      - "8000:8000"
+    volumes:
+      - app-instance:/app/instance
+      - app-uploads:/app/uploads
+    restart: unless-stopped
+
+volumes:
+  app-instance:
+  app-uploads:
