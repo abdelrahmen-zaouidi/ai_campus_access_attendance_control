@@ -1,0 +1,192 @@
+/* styles.css */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Roboto', sans-serif;
+}
+
+body {
+    background-color: #f0f8ff; /* Light blue background */
+    color: #333;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+/* Increase the width of the main container for pages with tables */
+.container {
+    width: 50%; /* Match the width of add.html */
+    max-width: 600px; /* Allow it to expand up to 1000px on larger screens */
+    background-color: #ffffff;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    text-align: center;
+}
+
+h2 {
+    font-size: 2rem;
+    color: #333;
+    margin-bottom: 1.5rem;
+}
+
+label {
+    display: block;
+    margin-top: 1rem;
+    font-weight: bold;
+    font-size: 0.9rem;
+    color: #333;
+}
+
+input[type="text"],
+input[type="date"],
+input[type="time"],
+input[type="file"] {
+    width: 100%;
+    padding: 0.75rem;
+    margin-top: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+button {
+    margin-top: 1.5rem;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 4px;
+    background-color: #4CAF50; /* Bright green */
+    color: #fff;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+button:hover {
+    background-color: #43A047;
+}
+
+.button-container {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 1.5rem;
+}
+
+/* CSS for .wide-container */
+.wide-container {
+    width: 100%; /* Wider layout only for pages with tables */
+    max-width: 2000px;
+    background-color: #ffffff;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    text-align: center;
+}
+
+/* Table should take full width of its container */
+.table-container {
+    width: 100%; /* Full width for the table container */
+    margin-top: 1.5rem;
+    overflow-x: auto;
+}
+
+table {
+    width: 100%; /* Ensure table takes full width of .table-container */
+    border-collapse: collapse;
+}
+
+/* Additional styles for table appearance */
+table, th, td {
+    border: 1px solid #ddd;
+    padding: 1rem;
+    text-align: center;
+}
+
+th, td {
+    padding: 1rem;
+    text-align: left;
+}
+
+/* Increase column width for specific headers if needed */
+th {
+    background-color: #008CBA; /* Bright blue for headers */
+    color: white;
+    font-weight: bold;
+}
+
+.add-course-btn {
+    display: inline-block;
+    text-decoration: none;
+    margin-top: 1.5rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 4px;
+    background-color: #FF9800; /* Bright orange */
+    color: #fff;
+    font-weight: bold;
+    transition: background-color 0.3s;
+}
+
+.add-course-btn:hover {
+    background-color: #FB8C00;
+}
+
+.delete-button {
+    background-color: #E57373; /* Soft red for delete button */
+    color: #fff;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+}
+
+.delete-button:hover {
+    background-color: #E53935;
+}
+
+.edit-button {
+    background-color: #64B5F6; /* Light blue for edit button */
+    color: #fff;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+}
+
+.edit-button:hover {
+    background-color: #42A5F5;
+}
+
+.form-row {
+    display: flex;
+    gap: 1rem; /* Control the spacing between elements */
+    margin-bottom: 1rem;
+}
+
+.form-row > div {
+    flex: 1; /* Each div inside .form-row will take equal width */
+}
+
+.form-row label,
+.form-row input {
+    width: 100%; /* Full width for elements within each column */
+
+}
+
+/* Add a specific class to the form row with time fields for fine-tuning */
+.form-row.time-fields {
+    margin-top: 0.5rem; /* Adjust this value as needed */
+}
+
+
+@media (max-width: 768px) {
+    .form-row {
+        flex-direction: column;
+        gap: 0;
+    }
+
+    .form-row > div {
+        width: 100%; /* Full width on smaller screens */
+    }
+}

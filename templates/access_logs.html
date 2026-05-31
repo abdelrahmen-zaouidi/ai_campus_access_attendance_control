@@ -1,0 +1,60 @@
+<!DOCTYPE html> 
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Access Logs</title>
+    <link rel="stylesheet" href="/static/styles_logs.css">
+</head>
+<body>
+    <div class="wide-container">
+        <h2>Historique d'accès</h2>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nom</th>
+                        <th>Date</th>
+                        <th>Statut</th>
+                    </tr>
+                </thead>
+                <tbody id="log-table-body">
+                    {% for log in logs.items %}
+                    <tr>
+                        <td>{{ log.name }}</td>
+                        <td>{{ log.timestamp }}</td>
+                        <td>{{ log.status }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="pagination-container">
+            <ul class="pagination">
+                {% if logs.has_prev %}
+                <li><a href="{{ url_for('get_logs', page=logs.prev_num) }}">Précédent</a></li>
+                {% endif %}
+                {% for page_num in logs.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                    {% if page_num %}
+                    <li><a href="{{ url_for('get_logs', page=page_num) }}">{{ page_num }}</a></li>
+                    {% else %}
+                    <li>...</li>
+                    {% endif %}
+                {% endfor %}
+                {% if logs.has_next %}
+                <li><a href="{{ url_for('get_logs', page=logs.next_num) }}">Suivant</a></li>
+                {% endif %}
+            </ul>
+        </div>
+
+        <div class="action-buttons">
+            <button class="refresh-btn" onclick="window.location.reload()">Actualiser la liste</button>
+            <a href="{{ url_for('view_courses') }}" class="refresh-btn">Liste des cours</a>
+            <a href="{{ url_for('logout') }}"class="refresh-btn">Déconnexion</a>
+        </div>
+    </div>
+
+    <script src="/static/scripts_logs.js"></script>
+</body>
+</html>

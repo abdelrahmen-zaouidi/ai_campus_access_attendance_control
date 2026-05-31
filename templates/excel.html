@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload CSV</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h2>Importer des cours</h2>
+        <form action="/upload_csv" method="POST" enctype="multipart/form-data">
+            <label for="file">Sélectionner un fichier CSV:</label>
+            <input type="file" name="file" id="file" accept=".csv" required>
+            <button type="submit">Importer</button>
+        </form>
+            <a href="{{ url_for('view_courses') }}" class="add-course-btn">Liste des Cours</a>
+            <a href="{{ url_for('get_logs') }}" class="add-course-btn">Historique d'acces</a>
+    </div>
+</body>
+</html>

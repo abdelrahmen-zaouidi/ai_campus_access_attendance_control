@@ -1,0 +1,142 @@
+/* styles.css */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Roboto', sans-serif;
+}
+
+body {
+    background-color: #f0f8ff; /* Light blue background */
+    color: #333;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.container {
+    width: 90%; /* Make the container wide */
+    max-width: 1500px;
+    background-color: #ffffff;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    text-align: center;
+}
+
+h2 {
+    font-size: 2rem;
+    color: #333;
+    margin-bottom: 1.5rem;
+}
+
+label {
+    display: block;
+    margin-top: 1rem;
+    font-weight: bold;
+    font-size: 0.9rem;
+    color: #333;
+}
+
+input[type="text"],
+input[type="date"],
+input[type="time"],
+input[type="file"] {
+    width: 100%;
+    padding: 0.75rem;
+    margin-top: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+button {
+    margin-top: 1.5rem;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 4px;
+    background-color: #4CAF50; /* Bright green */
+    color: #fff;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+button:hover {
+    background-color: #43A047;
+}
+
+.button-container {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 1.5rem;
+}
+
+.table-container {
+    margin-top: 1.5rem;
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+table, th, td {
+    border: 1px solid #ddd;
+}
+
+th {
+    background-color: #008CBA; /* Bright blue for headers */
+    color: white;
+    padding: 1rem;
+    font-weight: bold;
+}
+
+td {
+    padding: 1rem;
+    text-align: center;
+}
+
+.add-course-btn {
+    display: inline-block;
+    text-decoration: none;
+    margin-top: 1.5rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 4px;
+    background-color: #FF9800; /* Bright orange */
+    color: #fff;
+    font-weight: bold;
+    transition: background-color 0.3s;
+}
+
+.add-course-btn:hover {
+    background-color: #FB8C00;
+}
+
+.delete-button {
+    background-color: #E57373; /* Soft red for delete button */
+    color: #fff;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+}
+
+.delete-button:hover {
+    background-color: #E53935;
+}
+
+.edit-button {
+    background-color: #64B5F6; /* Light blue for edit button */
+    color: #fff;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+}
+
+.edit-button:hover {
+    background-color: #42A5F5;
+}

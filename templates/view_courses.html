@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Liste des cours</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles_view.css') }}">
+    <script src="{{ url_for('static', filename='scripts_view.js') }}" defer></script>
+</head>
+<body>
+    <div class="container">
+        <h2>Liste des cours</h2>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Prénom</th>
+                        <th>Nom</th>
+                        <th>Nom de la salle</th>
+                        <th>Date du cours</th>
+                        <th>Heure de début</th>
+                        <th>Heure de fin</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for course in courses %}
+                        <tr>
+                            <td>{{ course.first_name }}</td>
+                            <td>{{ course.last_name }}</td>
+                            <td>{{ course.room_name }}</td>
+                            <td>{{ course.course_date }}</td>
+                            <td>{{ course.start_time }}</td>
+                            <td>{{ course.end_time }}</td>
+                            <td>
+                                <form action="{{ url_for('delete_course', course_id=course.id) }}" method="post" style="display:inline;">
+                                    <button type="submit" class="delete-button">Supprimer</button>
+                                </form>
+                                <a href="{{ url_for('edit_course', course_id=course.id) }}">
+                                    <button type="button" class="edit-button">Modifier</button>
+                                </a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="button-container">
+        <a href="{{ url_for('add_teacher_course') }}" class="add-course-btn">Ajouter un Cours</a>
+        <a href="{{ url_for('upload_csv') }}" class="add-course-btn">Importer des cours</a>
+        <a href="{{ url_for('get_logs') }}" class="add-course-btn">historique d'acces</a>
+        <a href="{{ url_for('logout') }}"class="add-course-btn">Déconnexion</a>
+        </div>
+    </div>
+</body>
+</html>
